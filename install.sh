@@ -5,7 +5,15 @@ set -euo pipefail
 command -v jq >/dev/null || { echo "jq required (brew install jq)"; exit 1; }
 
 mkdir -p "$HOME/.claude"
-cp "$(dirname "$0")/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
+
+# Local copy when run from a clone; otherwise fetch (e.g. curl ... | bash).
+src="$(dirname "$0")/statusline-command.sh"
+if [ -f "$src" ]; then
+  cp "$src" "$HOME/.claude/statusline-command.sh"
+else
+  curl -fsSL https://raw.githubusercontent.com/thawinwats/claude-statusline/master/statusline-command.sh \
+    -o "$HOME/.claude/statusline-command.sh"
+fi
 chmod +x "$HOME/.claude/statusline-command.sh"
 
 SETTINGS="$HOME/.claude/settings.json"

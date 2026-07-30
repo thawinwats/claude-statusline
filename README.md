@@ -1,17 +1,55 @@
 # claude-statusline
 
-Claude Code statusline: model name, context usage bar, and 5h/7d rate-limit countdowns.
+A statusline for Claude Code: model name, context-usage bar, token count, and 5h/7d rate-limit countdowns.
+
+```
+Opus 5 | [████████░░░░░░░░░░░░] 38% | 76k/200k tokens | 5h:42% (↺ 2h ~ 4:15pm) | 7d:18% (↺ 5d)
+```
+
+- Model name in magenta.
+- Context bar + percentage: green under 60%, yellow 60-85%, red above 85%.
+- Tokens used / context window size.
+- `5h` and `7d` rate-limit usage, same color thresholds, with a `↺` countdown to the next reset (the countdown turns yellow, then red, as the reset nears). The 5h entry also shows the wall-clock reset time.
+
+## Prerequisites
+
+`jq`. Check with `jq --version`; if it's missing:
+
+```bash
+brew install jq
+```
+
+(No Homebrew? Install it from https://brew.sh first.)
 
 ## Install
 
+One-liner:
+
 ```bash
-git clone https://github.com/YOUR_USERNAME/claude-statusline.git
+curl -fsSL https://raw.githubusercontent.com/thawinwats/claude-statusline/master/install.sh | bash
+```
+
+Or from a clone:
+
+```bash
+git clone https://github.com/thawinwats/claude-statusline.git
 cd claude-statusline
 ./install.sh
 ```
 
-Requires `jq`. Merges `statusLine` into `~/.claude/settings.json` (creates the file if missing) and copies the script to `~/.claude/statusline-command.sh`.
+Then restart Claude Code.
+
+The installer copies the script to `~/.claude/statusline-command.sh` and sets `statusLine` in `~/.claude/settings.json` (creating that file if it doesn't exist). Nothing else in your settings is touched, and re-running is safe — it overwrites the same two things.
 
 ## Update
 
-Pull latest and re-run `./install.sh`.
+Re-run the one-liner, or `git pull && ./install.sh`.
+
+## Uninstall
+
+```bash
+jq 'del(.statusLine)' ~/.claude/settings.json > /tmp/s.json && mv /tmp/s.json ~/.claude/settings.json
+rm ~/.claude/statusline-command.sh
+```
+
+Restart Claude Code.
