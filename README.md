@@ -13,13 +13,13 @@ Opus 5 | [████████░░░░░░░░░░░░] 38% | 76
 
 ## Prerequisites
 
-`jq`. Check with `jq --version`; if it's missing:
+`jq`. Check with `jq --version`. If it's missing, the installer offers to install it for you via Homebrew (it asks first, and defaults to no) — or install it yourself:
 
 ```bash
 brew install jq
 ```
 
-(No Homebrew? Install it from https://brew.sh first.)
+(No Homebrew? Install it from https://brew.sh first — the installer won't install Homebrew for you.)
 
 ## Install
 
