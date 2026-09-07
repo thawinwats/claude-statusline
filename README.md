@@ -3,13 +3,14 @@
 A statusline for Claude Code: model name, context-usage bar, token count, and 5h/7d rate-limit countdowns.
 
 ```
-Opus 5 | [████████░░░░░░░░░░░░] 38% | 76k/200k tokens | 5h:42% (↺ 2h ~ 4:15pm) | 7d:18% (↺ 5d)
+Opus 5 | [████████░░░░░░░░░░░░] 38% | 76k/200k tokens | 5h:42% (↺ 2h ~ 4:15pm) | 7d:18% (↺ 5d ~ Sat)
 ```
 
 - Model name in magenta.
 - Context bar + percentage: green under 60%, yellow 60-85%, red above 85%.
 - Tokens used / context window size.
-- `5h` and `7d` rate-limit usage, same color thresholds, with a `↺` countdown to the next reset (the countdown turns yellow, then red, as the reset nears). The 5h entry also shows the wall-clock reset time.
+- `5h` and `7d` rate-limit usage, same color thresholds, with a `↺` countdown to the next reset (the countdown turns yellow, then red, as the reset nears). The 5h entry also shows the wall-clock reset time; the 7d entry shows the weekday it rolls over on.
+- The countdown rounds to the nearest unit, so a reset 1d23h away reads `2d`, not `1d`.
 
 ## Prerequisites
 

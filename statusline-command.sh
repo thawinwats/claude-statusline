@@ -61,6 +61,19 @@ fi
 now=$(date +%s)
 JUST_RESET_WINDOW=300  # seconds; treat a reset in the last 5 min as "just happened"
 
+# BSD/macOS date reads an epoch with -r, GNU date with -d @<epoch>. Probe once:
+# `date -r 0` succeeds on BSD and fails on GNU (which wants a file named "0").
+if date -r 0 +%s >/dev/null 2>&1; then DATE_EPOCH_STYLE=bsd; else DATE_EPOCH_STYLE=gnu; fi
+
+# fmt_epoch <epoch> <date_fmt>
+fmt_epoch() {
+  if [ "$DATE_EPOCH_STYLE" = bsd ]; then
+    date -r "$1" "$2" 2>/dev/null
+  else
+    date -d "@$1" "$2" 2>/dev/null
+  fi
+}
+
 rate_color() {
   local pct="$1"
   if [ "$pct" -ge 85 ]; then
@@ -100,16 +113,21 @@ countdown_str() {
 }
 
 # unit_countdown <remaining_seconds> — single-unit label that shrinks as the
-# reset approaches: "6d" -> "1d" -> "23h" -> "1h" -> "45m" -> "1m" -> "30s"
+# reset approaches: "6d" -> "2d" -> "23h" -> "1h" -> "45m" -> "1m" -> "30s"
+# Rounds to the nearest unit rather than truncating: a reset 1d23h out is "2d",
+# not "1d" (which reads as "tomorrow"). Rounding up out of a unit carries into
+# the next one, so 23h50m is "1d" rather than "24h".
 unit_countdown() {
   local rem="$1"
   [ "$rem" -lt 0 ] && rem=0
   if [ "$rem" -ge 86400 ]; then
-    printf '%dd' $(( rem / 86400 ))
+    printf '%dd' $(( (rem + 43200) / 86400 ))
   elif [ "$rem" -ge 3600 ]; then
-    printf '%dh' $(( rem / 3600 ))
+    local hours=$(( (rem + 1800) / 3600 ))
+    if [ "$hours" -ge 24 ]; then printf '1d'; else printf '%dh' "$hours"; fi
   elif [ "$rem" -ge 60 ]; then
-    printf '%dm' $(( rem / 60 ))
+    local mins=$(( (rem + 30) / 60 ))
+    if [ "$mins" -ge 60 ]; then printf '1h'; else printf '%dm' "$mins"; fi
   else
     printf '%ds' "$rem"
   fi
@@ -126,12 +144,12 @@ next_reset_remaining() {
   printf '%d' $(( reset_at - now ))
 }
 
-# format_reset <resets_at> <pct> <interval_seconds> <date_fmt>
+# format_reset <resets_at> <pct> <interval_seconds>
 # Handles the "just reset" edge case (rolls forward past occurrences, or
-# shows "Just now"), and shows a countdown instead of a clock/day label
-# once the reset is imminent (red zone).
+# shows "Just now"). Returns "<countdown>\t<color>\t<next_reset_epoch>";
+# callers render the epoch into a clock or day label as they see fit.
 format_reset() {
-  local reset_at="$1" pct="$2" interval="$3" fmt="$4"
+  local reset_at="$1" pct="$2" interval="$3"
   [ -z "$reset_at" ] && return 1
 
   if [ "$reset_at" -le "$now" ]; then
@@ -158,11 +176,11 @@ if [ -n "$five_hour" ]; then
   fh_color=$(rate_color "$fh_pct")
   fh_interval=$((5 * 3600))
   fh_str="5h:${fh_pct}%"
-  fh_result=$(format_reset "$five_hour_reset" "$fh_pct" "$fh_interval" "%H:%M")
+  fh_result=$(format_reset "$five_hour_reset" "$fh_pct" "$fh_interval")
   if [ -n "$fh_result" ]; then
     IFS=$'\t' read -r fh_time fh_rcolor fh_reset_at <<< "$fh_result"
     if [ -n "$fh_reset_at" ]; then
-      fh_clock=$(date -r "$fh_reset_at" '+%-I:%M%p' 2>/dev/null | tr '[:upper:]' '[:lower:]')
+      fh_clock=$(fmt_epoch "$fh_reset_at" '+%-I:%M%p' | tr '[:upper:]' '[:lower:]')
       fh_str="${fh_str} (${fh_rcolor}↺ ${fh_time} ~ ${fh_clock}${fh_color})"
     else
       fh_str="${fh_str} (${fh_rcolor}↺ ${fh_time}${fh_color})"
@@ -176,10 +194,16 @@ if [ -n "$seven_day" ]; then
   sd_color=$(rate_color "$sd_pct")
   sd_interval=$((7 * 24 * 3600))
   sd_str="7d:${sd_pct}%"
-  sd_result=$(format_reset "$seven_day_reset" "$sd_pct" "$sd_interval" "%a")
+  sd_result=$(format_reset "$seven_day_reset" "$sd_pct" "$sd_interval")
   if [ -n "$sd_result" ]; then
     IFS=$'\t' read -r sd_day sd_rcolor sd_reset_at <<< "$sd_result"
-    sd_str="${sd_str} (${sd_rcolor}↺ ${sd_day}${sd_color})"
+    sd_weekday=""
+    [ -n "$sd_reset_at" ] && sd_weekday=$(fmt_epoch "$sd_reset_at" '+%a')
+    if [ -n "$sd_weekday" ]; then
+      sd_str="${sd_str} (${sd_rcolor}↺ ${sd_day} ~ ${sd_weekday}${sd_color})"
+    else
+      sd_str="${sd_str} (${sd_rcolor}↺ ${sd_day}${sd_color})"
+    fi
   fi
   parts="${parts} | ${sd_color}${sd_str}\033[0m"
 fi
